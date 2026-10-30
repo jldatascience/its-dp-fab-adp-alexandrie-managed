@@ -1,4 +1,4 @@
-# PR-Validation.yml — its-dp-fab-item-framework-managed
+# PR-Validation.yml — its-dp-fab-adp-alexandrie-managed
 # Contrôles CI réels et bloquants sur chaque Pull Request vers develop, release/* ou main.
 # À déclarer comme « Required status check » dans la branch protection GitHub.
 # ── trigger — pas de declenchement direct

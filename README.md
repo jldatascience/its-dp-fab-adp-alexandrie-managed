@@ -1,52 +1,44 @@
-# its-dp-fab-item-framework-managed — Framework
+# its-dp-fab-adp-alexandrie-managed — ADP Alexandrie
 
-Dépôt GitHub des items Microsoft Fabric du workspace **Framework**, et de leur configuration de déploiement. Le workspace Framework est le workspace mutualisé des « fonctions sur étagère » : des pipelines et notebooks communs (chargement, journalisation) que les Data Products appellent.
+Dépôt GitHub des items Microsoft Fabric du workspace **ADP Alexandrie**, et de leur configuration de déploiement.
 
 Ce dépôt ne contient **aucun code de déploiement**. Il décrit *quoi* déployer et *où*. La logique (contrôles, publication, vérification, rapport) se trouve dans le dépôt socle commun `its-dp-fab-cicd-common`, appelé par le tag `v1.5.0`.
 
+> **État au 30/10/2026 : le dépôt ne contient encore aucun item Fabric, et rien n'est déployable.**
+> `fabric/` ne contient que `.gitkeep` et `test.md`. `deploy.py validate` s'arrête en code 4 (« Aucun item Fabric ») avant les contrôles statiques, et la CD refuserait de toute façon toute publication (`inventory_status: pending`, marqueurs à relever).
+
 | Rubrique | Valeur |
 |---|---|
-| Catégorie | `framework` |
-| Workspaces | `FR - DP - <ENV> - FAB - Framework - MANAGED` (DEV, ITG, PPR, PRD) |
+| Catégorie | `adp` (Data Product de type ADP) ; rôle `consumer` dans le socle |
+| Workspace DEV | `FR - DP - DEV - FAB - ADP - Alexandrie - MANAGED` |
+| Workspaces ITG, PPR, PRD | À relever dans le portail Fabric (marqueurs dans `CICD/deployment/config.yml`) |
 | Branches | `develop` (par défaut) · `release/*` · `main` |
-| Pipelines Azure DevOps | CI : `its-dp-fab-item-framework-managed-CI` · CD : à créer depuis `CICD/pipelines/CD.yml`, nom attendu `its-dp-fab-item-framework-managed-cd` · validation de PR : à créer depuis `CICD/pipelines/PR-Validation.yml` |
+| Pipelines Azure DevOps | CI : à créer depuis `CICD/pipelines/CI.yml` (nom à relever) · CD : à créer depuis `CICD/pipelines/CD.yml` · validation de PR : à créer depuis `CICD/pipelines/PR-Validation.yml` |
 | Socle commun | `its-dp-fab-cicd-common`, tag `v1.5.0` |
 | Statut d'inventaire | `pending` : la CD refuse toute publication tant que l'inventaire n'est pas validé sur la branche réelle |
 
-Ne pas confondre ce dépôt avec le **core framework** : c'est le dépôt du code Python/PySpark, qui produit des wheels publiés dans Azure Artifacts et n'est relié à aucun workspace. Ce dépôt-ci ne contient que les **items Fabric** du workspace Framework.
-
 ## Dépendances
 
-**Aucun prérequis de déploiement.**
+**Prérequis de déploiement unique : le Framework** (`its-dp-fab-item-framework-managed`).
 
-- Le Framework est déployé en premier quand il est absent d'un environnement. Il n'est **pas redéployé systématiquement** quand un Data Product change.
-- Sa CD n'a **aucune porte** : le rapport indique `GATE_NOT_APPLICABLE`.
-- Il ne référence aucun autre workspace. Ses 56 règles `parameter.yml` visent toutes le **workspace courant** (`_ALL_`), car chaque pipeline appelle un item du même workspace.
+- Avant chaque déploiement sur ITG, PPR ou PRD, la CD vérifie que le Framework est **disponible** sur cet environnement :
+  - le workspace Framework de l'environnement existe (pré-vol, `PRE_FRAMEWORK_WORKSPACE`) ;
+  - les items Framework utilisés par Alexandrie sont présents (pré-vol, `PRE_FRAMEWORK_ITEM`). Ils sont à déclarer dans `framework.items`, aujourd'hui vide ;
+  - le dernier stage `Deploy_<ENV>` de la CD Framework a réussi et aucun n'est en cours (porte Azure DevOps). La porte lit l'historique **sur la même branche** : `develop` pour ITG, `release/*` pour PPR, `main` pour PRD.
+- Tant que la **nouvelle** CD Framework n'a pas tourné au moins une fois sur l'environnement visé, la porte renvoie `GATE_NEVER_DEPLOYED`. Un Framework publié par l'ancienne CD est présent dans Fabric, mais il est invisible pour la porte.
+- La CD **n'exige jamais de redéployer le Framework** : s'il est déjà disponible, Alexandrie se déploie immédiatement.
+- **Aucune dépendance vers les BDP ni vers les autres ADP** : ordre libre, déploiement possible en parallèle.
 
-**Il est le seul prérequis des ADP et des BDP.** Avant de déployer, la CD d'un ADP ou d'un BDP vérifie que le Framework est **disponible** sur l'environnement cible :
-- le workspace Framework existe ;
-- les items Framework que l'ADP ou le BDP utilise sont présents ;
-- le **dernier** stage `Deploy_<ENV>` de cette CD Framework a réussi, et aucun déploiement n'est en cours.
-
-Conséquences pratiques pour ce dépôt :
-- **Le nom de la CD Framework dans Azure DevOps doit rester celui attendu par les autres dépôts** (`its-dp-fab-item-framework-managed-cd`, à confirmer).
-- **L'historique des runs de cette CD doit être conservé** : vérifier la rétention, ou poser un retention lease sur le dernier run réussi par environnement.
-- **Un Framework en cours de déploiement ou en échec sur un environnement bloque les ADP et BDP de cet environnement** jusqu'au prochain run réussi.
-- **Ne jamais supprimer puis recréer un item appelé par un Data Product.** Un item recréé change d'ID, et les ADP et BDP déjà déployés pointeraient vers l'ancien. Une mise à jour normale conserve l'ID.
-
-| Item Framework | Appelé par |
+| Item Framework utilisé | Appelé depuis |
 |---|---|
-| `pl_get_ws_lh_ids` | ADP MDS (`pl_master_load`) |
-| `log_sequence_start`, `log_sequence_ok`, `log_sequence_ko` | ADP MDS (`pl_master_load`) |
-| `pl_load_object` | ADP MDS (`pl_load_tables`) |
-| Autres items | Usages des autres ADP et BDP à inventorier |
+| À relever à l'inventaire | — |
 
-Connexion Fabric déclarée dans `CICD/deployment/dependencies.yml` et vérifiée au pré-vol : `DP-Fabric-Global-APR` (connexion « Fabric Data Pipelines » des activités InvokePipeline, nom exact à confirmer).
+Connexions Fabric requises : à relever à l'inventaire, puis à déclarer dans `connections` de `CICD/deployment/dependencies.yml` (vérifiées au pré-vol).
 
 ## Arborescence
 
 ```text
-its-dp-fab-item-framework-managed/         branches develop (défaut) · release/* · main
+its-dp-fab-adp-alexandrie-managed/         branches develop (défaut) · release/* · main
 │
 ├── CHANGELOG.md                         # journal des changements du dépôt (entrées datées)
 ├── README.md                            # ce fichier
@@ -54,131 +46,45 @@ its-dp-fab-item-framework-managed/         branches develop (défaut) · release
 │  ── Déploiement (lu par Azure DevOps, jamais publié dans Fabric) ──
 ├── CICD/
 │   ├── pipelines/
-│   │   ├── CI.yml                       # pipeline ADO its-dp-fab-item-framework-managed-CI
+│   │   ├── CI.yml                       # pipeline ADO de CI (template KPMG) : version, SonarQube, artefact « fabric »
 │   │   ├── CD.yml                       # pipeline ADO de CD → CICD/pipelines/templates/cd-pipeline.yml@cicd_common
 │   │   └── PR-Validation.yml            # check obligatoire des PR → CICD/pipelines/templates/validate-pipeline.yml@cicd_common
 │   ├── deployment/
-│   │   ├── config.yml                   # workspaces « FR - DP - <ENV> - FAB - Framework - MANAGED »,
-│   │   │                                #   repository_directory: "../../fabric", types, exclusions
-│   │   ├── parameter.yml                # 56 règles (28 activités) : $workspace.$id / $items…
-│   │   └── dependencies.yml             # category framework : aucun prérequis ; data_dependencies,
-│   │                                    #   connexions, politique des GUID
-│   └── ref_dynamique/                   # inventaire des références (01_… à 04_….py, lancés depuis ce dossier)
-│       ├── README_resultats_inventaire_framework.md
-│       └── templates/                   #   modèles config.yml / parameter.yml (solution temporaire DEV)
+│   │   ├── config.yml                   # workspaces Alexandrie (DEV connu, ITG/PPR/PRD à relever),
+│   │   │                                #   repository_directory: "../../fabric", types (vide)
+│   │   ├── parameter.yml                # aucune règle (en-tête : familles de règles attendues)
+│   │   └── dependencies.yml             # category adp : Framework seul prérequis (workspaces, porte ADO),
+│   │                                    #   items, connexions, Variable Libraries, guid_policy à relever
+│   └── ref_dynamique/                   # copie de l'outillage Framework/MDS, NON adapté à Alexandrie (voir plus bas)
+│       └── templates/
 │
-│  ── Contenu du workspace Framework (Git Integration DEV + publication fabric-cicd) ──
+│  ── Contenu du workspace ADP Alexandrie (Git Integration DEV + publication fabric-cicd) ──
 └── fabric/
-    ├── Flux/
-    │   ├── 30b76367-6f62-88fd-40ca-0a7a289c3fee.DataPipeline/   # pl_src_to_stg
-    │   ├── 4918bdb7-c84c-8844-455f-f9d2c6c0d5fc.DataPipeline/   # pl_run_table
-    │   ├── 4adc1b70-a524-b462-44de-afca42c73be5.Notebook/       # nb_run_table
-    │   ├── 713e3adf-9d79-b741-4191-8fa01a236557.DataPipeline/   # pl_stg_to_str
-    │   ├── 75ffc0fd-5ffb-8f5b-4fcd-4cfa1cb7b46f.DataPipeline/   # pl_src_to_arc
-    │   └── old/                              # EXCLU (5 items *_v1)
-    ├── Log_load/
-    │   ├── log_load_end_ko.DataPipeline/
-    │   ├── log_load_end_ok.DataPipeline/
-    │   ├── log_load_start.DataPipeline/
-    │   ├── nb_log_load_end_ko.Notebook/
-    │   ├── nb_log_load_end_ok.Notebook/
-    │   └── nb_log_load_start.Notebook/
-    ├── Log_processing/
-    │   ├── Old_processing/                   # EXCLU (6 items *_v1)
-    │   ├── log_processing_end_ko.DataPipeline/
-    │   ├── log_processing_end_ok.DataPipeline/
-    │   ├── log_processing_start.DataPipeline/
-    │   ├── nb_log_processing_end_ko.Notebook/
-    │   ├── nb_log_processing_end_ok.Notebook/
-    │   └── nb_log_processing_start.Notebook/
-    ├── Log_sequence/
-    │   ├── Old_sequence/                     # EXCLU (6 items *_v1)
-    │   ├── log_sequence_ko.DataPipeline/     # invoqué par ADP MDS
-    │   ├── log_sequence_ok.DataPipeline/     # invoqué par ADP MDS
-    │   ├── log_sequence_start.DataPipeline/  # invoqué par ADP MDS
-    │   ├── nb_log_sequence_end_ko.Notebook/
-    │   ├── nb_log_sequence_end_ok.Notebook/
-    │   └── nb_log_sequence_start.Notebook/
-    ├── Testing_notebook.Notebook/
-    │   ├── .platform
-    │   └── notebook-content.py
-    ├── Tests_Intégration/                    # EXCLU
-    │   ├── integration_scd2.Notebook/
-    │   └── testing_notebook Copy.Notebook/
-    ├── env_spark.Environment/
-    │   ├── .platform
-    │   ├── Libraries/
-    │   └── Setting/
-    ├── env_spark_new.Environment/
-    │   ├── .platform
-    │   ├── Libraries/
-    │   └── Setting/
-    ├── nb_generate_dso_views_loop.Notebook/
-    │   ├── .platform
-    │   └── notebook-content.py
-    ├── nb_view_generator.Notebook/
-    │   ├── .platform
-    │   └── notebook-content.py
-    ├── pipelines/                            # fichiers YAML, aucun item Fabric
-    │   ├── ci.yml
-    │   └── ci_v2.yml
-    ├── pl_load_object.DataPipeline/          # invoqué par ADP MDS (pl_load_tables)
-    │   ├── .platform
-    │   └── pipeline-content.json
-    ├── pl_load_object_v1.DataPipeline/
-    │   ├── .platform
-    │   └── pipeline-content.json
+    ├── .gitkeep
     └── test.md
 ```
 
-Cette arborescence reflète le contenu du dépôt au 29/10/2026 (`find fabric -maxdepth 2 | sort`), et non l'inventaire du MODOP. Les noms sont ceux du disque. Les items de `Flux/` sont rangés dans des dossiers nommés par GUID : leur nom affiché, lu dans `.platform`, figure en commentaire. Cités par le MODOP mais absents du dépôt à cette date : `pl_get_ws_lh_ids`, `nb_get_ws_lh_ids`, `vl_core_config`, `env_dev`.
+Cette arborescence reflète le contenu du dépôt au 30/10/2026. Elle sera complétée par les items du workspace DEV.
 
 `repository_directory` est résolu **relativement au dossier de `config.yml`** (`CICD/deployment/`), par fabric-cicd 1.4.0 comme par le socle : `"../../fabric"` désigne le dossier `fabric/` à la racine du dépôt.
 
+### Rôle des fichiers YAML
+
+| Fichier | Lu par | Rôle |
+|---|---|---|
+| `CICD/pipelines/CI.yml` | Azure DevOps (template KPMG `PipelineTemplate.yaml@CICD`) | Build sur `develop`, `release/*`, `main` ; publie l'artefact `fabric` consommé par la CD |
+| `CICD/pipelines/CD.yml` | Azure DevOps → socle `cd-pipeline.yml` | Un run par build CI ; un seul environnement par run, selon la branche |
+| `CICD/pipelines/PR-Validation.yml` | Azure DevOps → socle `validate-pipeline.yml` | Contrôles statiques bloquants sur chaque PR |
+| `CICD/deployment/config.yml` | fabric-cicd 1.4.0 et socle | Workspaces cibles par nom, dossier des items, types publiés, publish / unpublish |
+| `CICD/deployment/parameter.yml` | fabric-cicd 1.4.0 et socle | Remplacement des références par environnement (`key_value_replace`) |
+| `CICD/deployment/dependencies.yml` | socle uniquement | Rôle, catégorie, prérequis Framework, connexions, Variable Libraries, politique GUID |
+
 ## Exclusions (`CICD/deployment/config.yml`)
 
-```yaml
-item_types_in_scope: [VariableLibrary, Notebook, DataPipeline, Environment]
-folder_exclude_regex: "^/(Tests_|Flux/old|Log_processing/Old_processing|Log_sequence/Old_sequence|To_delete)"
-features: [enable_experimental_features, enable_exclude_folder]
-```
-
-- Les chemins sont relatifs à `fabric/`. Les dossiers exclus restent dans Git mais ne sont **jamais déployés** :
-  - `Tests_Intégration/` (motif `Tests_`) ;
-  - `Flux/old/` ;
-  - `Log_processing/Old_processing/` ;
-  - `Log_sequence/Old_sequence/` ;
-  - `To_delete/`.
-- `folder_exclude_regex` ne fonctionne qu'avec les deux feature flags ci-dessus.
-- Aucune suppression automatique : `unpublish` est désactivé sur les 4 environnements. Supprimer un item en ITG, PPR ou PRD reste une action manuelle validée, après avoir vérifié qu'aucun ADP ou BDP ne l'appelle.
-
-## `parameter.yml` : références internes
-
-Les 28 activités InvokePipeline et Notebook des pipelines du Framework donnent 56 règles : pour chaque activité, une règle pour le workspace et une pour l'item appelé. Toutes visent le workspace courant :
-
-```yaml
-- find_key: $.properties.activities[?(@.name=="nb_get_ws_lh_ids")].typeProperties.workspaceId
-  replace_value: { _ALL_: "$workspace.$id" }
-  item_type: DataPipeline
-  item_name: pl_get_ws_lh_ids
-- find_key: $.properties.activities[?(@.name=="nb_get_ws_lh_ids")].typeProperties.notebookId
-  replace_value: { _ALL_: "$items.Notebook.nb_get_ws_lh_ids.$id" }
-  item_type: DataPipeline
-  item_name: pl_get_ws_lh_ids
-```
-
-Au déploiement, fabric-cicd remplace les GUID de DEV par les ID du workspace Framework de l'environnement cible. La vérification après publication relit chaque référence et s'assure qu'aucun GUID de DEV ne reste.
-
-## Fichiers par type d'item
-
-Chaque item est un dossier `<nom>.<Type>/`. Il contient toujours `.platform` (type, nom affiché, identifiant logique) et ses fichiers de définition.
-
-| Type | Fichiers de définition | Déployé |
-|---|---|---|
-| DataPipeline | `pipeline-content.json` | Oui |
-| Notebook | `notebook-content.py` | Oui |
-| VariableLibrary | `variables.json`, `settings.json`, `valueSets/<value set>.json` | Oui (jeu de valeurs actif vérifié : `ITG` en ITG, etc.) |
-| Environment | `Setting/Sparkcompute.yml`, `Libraries/…` (si bibliothèques) | Oui |
+- `item_types_in_scope` est **vide** : il sera rempli uniquement avec les types relevés dans les fichiers `.platform` de `fabric/`. Une liste vide est bloquante (`TYPES_SCOPE_EMPTY`).
+- Aucun `folder_exclude_regex` ni feature flag : aucun dossier à exclure n'existe.
+- La clé `core.parameter` est absente tant que `parameter.yml` n'a aucune règle. Il faudra l'ajouter (`parameter: "parameter.yml"`) avec la première règle.
+- Aucune suppression automatique : `unpublish` est désactivé sur les 4 environnements. Supprimer un item en ITG, PPR ou PRD reste une action manuelle validée.
 
 ## Branches et déploiement
 
@@ -189,46 +95,39 @@ Chaque item est un dossier `<nom>.<Type>/`. Il contient toujours `.platform` (ty
 | `release/*` | Une branche par release (lot de features), créée depuis `develop` au besoin | PPR par la CD, après approbation | Protégée (PR obligatoire, check PR-Validation) |
 | `main` | Reflet de la production | PRD par la CD, après approbation | Protégée (PR obligatoire depuis `release/*`) |
 
-Un run de CD ne déploie qu'**un seul environnement** : celui de la branche d'où vient l'artefact CI. Toute autre branche est refusée. La porte des ADP et BDP lit l'historique de cette CD **sur la même branche** : `develop` pour ITG, `release/*` pour PPR, `main` pour PRD.
+Un run de CD ne déploie qu'**un seul environnement** : celui de la branche d'où vient l'artefact CI. Toute autre branche est refusée. DEV n'est jamais déployé par la CD (`devMode: skip`).
 
-## Déroulement de la chaîne
+## Secrets et service connections
 
-1. **Pull Request** vers `develop`, `release/*` ou `main` : `PR-Validation.yml` exécute les contrôles bloquants du socle. Ces contrôles portent sur :
-   - la syntaxe YAML et le JSON des items ;
-   - `config.yml` et `parameter.yml`, validés par fabric-cicd ;
-   - les 56 règles (aucune sans effet) ;
-   - les GUID en dur et les secrets en clair ;
-   - la matrice de dépendances.
+- **Identité de publication** : le SPN de l'environnement (`authMode: secret`). Ses trois secrets `<ENV>-AZURE-CLIENT-ID`, `-CLIENT-SECRET` et `-TENANT-ID` sont lus dans le coffre **unique** `frfrkvdevdp0001` par la tâche `AzureKeyVault@2` du template imposé.
+- **Service connections Azure Resource Manager** : une par environnement (ITG, PPR, PRD), **distinctes**, créées par Ops en fédération d'identité. Chacune est limitée aux 3 secrets de son environnement. Tant que le marqueur `__A_CONFIRMER_SERVICE_CONNECTION_ARM_<ENV>__` est présent, le stage échoue à la compilation.
+- Les service connections ARM **ne sont pas** des connexions Fabric : celles-ci sont utilisées par les items à l'exécution et se déclarent dans `dependencies.yml`.
+- Aucun secret ni identifiant d'authentification dans ce dépôt : la CI le refuse (`SECRET_*`).
 
-   Un check rouge empêche la fusion.
-2. **Fusion** : `CI.yml` (template KPMG) calcule la version, lance SonarQube et publie l'artefact `fabric`.
-3. **CD** (`CD.yml` → socle), stage `Validate_Artifact` : calcul de l'environnement cible selon la branche, contrôles rejoués sur l'artefact, empreinte SHA-256.
-4. **Environment ADO** `fabric-<env>` : approbation (PPR, PRD), verrou, branche autorisée, template obligatoire.
-5. **Stage `Deploy_<ENV>`** :
-   - intégrité de l'artefact ;
-   - secrets de l'environnement lus dans `frfrkvdevdp0001` ;
-   - pré-vol Fabric (workspace, capacité, connexions, références).
+## Référencement dynamique et Git Integration
 
-   Il n'y a **pas de porte** pour le Framework.
-6. **Publication** par fabric-cicd : les items sont créés ou mis à jour dans le workspace cible, **sans changer leur ID**, avec les références internes remplacées.
-7. **Vérification après publication** : les items, les références et le jeu de valeurs actif de `vl_core_config` sont relus ; aucun GUID de DEV ne doit rester.
-8. **Rapport de déploiement** `deployment-report-<ENV>`, en JSON et Markdown, publié dans le run ADO, même en cas d'échec. Un run vert devient la référence que liront les portes des ADP et BDP de cet environnement.
+Le référencement dynamique (règles `parameter.yml`, `framework.items`, connexions, `guid_policy`) **reste à construire**. Procédure :
 
-La CD déploie des **définitions d'items** : elle n'exécute aucun pipeline et ne charge aucune donnée.
+1. Connecter le workspace DEV `FR - DP - DEV - FAB - ADP - Alexandrie - MANAGED` à la branche `develop`, **dossier Git `fabric`** (Source control de Fabric), puis synchroniser.
+2. Relever dans les items synchronisés :
+   - les types présents (fichiers `.platform`) → `item_types_in_scope` ;
+   - les références au workspace courant → règles `$workspace.$id` / `$items.<Type>.<nom>.$id` ;
+   - les références au Framework → règles `$workspace.FR - DP - <ENV> - FAB - Framework - MANAGED.$items.<Type>.<nom>.$id`, et déclaration dans `framework.items` ;
+   - les connexions et Variable Libraries ; les GUID sandbox → `guid_policy`.
+3. Lancer `deploy.py validate` jusqu'à zéro erreur.
+
+`CICD/ref_dynamique/` est une copie de l'outillage du Framework. Ses scripts et modèles sont codés pour le Framework et MDS (`02_fab_cli.py` s'arrête sur tout autre dépôt) : **ils ne sont pas utilisables en l'état pour Alexandrie**. Ils seront à adapter si l'inventaire le justifie.
 
 ## Contribuer
 
-1. Travailler dans le workspace Framework DEV, puis enregistrer sur une branche `feature/*` (Source control de Fabric).
-2. Pour toute nouvelle activité InvokePipeline ou Notebook, ajouter ses deux règles (workspace + item) dans `CICD/deployment/parameter.yml`, en `_ALL_` vers le workspace courant.
-3. Avant de **renommer ou supprimer** un item, vérifier qu'aucun ADP ou BDP ne l'appelle :
-   - chercher son nom dans `framework.items` de leurs `dependencies.yml` ;
-   - chercher les références `$workspace…Framework…` dans leurs `parameter.yml`.
+1. Travailler dans le workspace DEV, puis enregistrer sur une branche `feature/*` (Source control de Fabric).
+2. Si un item appelle un item du Framework :
+   - ajouter la règle correspondante dans `CICD/deployment/parameter.yml`, au format `$workspace.FR - DP - <ENV> - FAB - Framework - MANAGED.$items.<Type>.<nom>.$id` ;
+   - déclarer l'item dans `framework.items` de `CICD/deployment/dependencies.yml`.
+3. Ne jamais référencer le workspace d'un autre Data Product (ADP, BDP, UCS) dans `parameter.yml` : la CI le refuse (`DEPS_CROSS_WORKSPACE_FORBIDDEN`). Une lecture de données se fait à l'exécution et se déclare, pour information, dans `data_dependencies`.
+4. Ouvrir une PR vers `develop` et corriger jusqu'à ce que le check PR-Validation soit vert.
 
-   Sinon leur pré-vol échouera (`PRE_FRAMEWORK_ITEM`, `PRE_REF_ITEM`).
-4. Les anciennes versions vont dans un dossier exclu (`old/`, `Old_*`, `To_delete/`), pas à la racine de `fabric/`.
-5. Ouvrir une PR vers `develop` et corriger jusqu'à ce que le check PR-Validation soit vert.
-
-Pour contrôler le dépôt en local, à partir d'un clone du socle :
+Pour contrôler le dépôt en local, à partir d'un clone du socle (Python 3.12, `pip install -r ../its-dp-fab-cicd-common/CICD/tools/requirements.txt`) :
 
 ```bash
 python ../its-dp-fab-cicd-common/CICD/tools/deploy.py validate --repo .
@@ -239,21 +138,41 @@ python ../its-dp-fab-cicd-common/CICD/tools/deploy.py validate --repo .
 | Élément | Pourquoi |
 |---|---|
 | `.github/workflows/CI.yml`, `.github/workflows/CD.yml` | Remplacés par `CI.yml`, `CD.yml` et `PR-Validation.yml` sous `CICD/pipelines/` (pipelines Azure DevOps) |
-| `deploy.py` dans `deployment/` ou `CICD/deployment/` | Remplacé par `CICD/tools/deploy.py` du socle (l'ancien script contenait des ID en dur) |
-| `check_connection.py` dans `deployment/` ou `CICD/deployment/` (si présent) | Contrôle des connexions intégré au pré-vol du socle |
-| `fabric/pipelines/ci.yml`, `fabric/pipelines/ci_v2.yml` | Anciens pipelines ADO, remplacés par `CICD/pipelines/CI.yml` (encore présents : à retirer) |
-| Items à la racine du dépôt | Déplacés sous `fabric/` |
-| Code Python/PySpark du core framework | Dépôt séparé (wheels publiés dans Azure Artifacts) |
+| `deploy.py` dans `deployment/` ou `CICD/deployment/` | Remplacé par `CICD/tools/deploy.py` du socle |
+| Items à la racine du dépôt | Ils vont sous `fabric/` |
+| Items copiés d'un autre dépôt, GUID en dur, secrets | Seuls les items du workspace Alexandrie, synchronisés par Git Integration |
 
-## Avant le premier déploiement
+## Avant le premier déploiement ITG
 
 - [ ] Remplacer les marqueurs de `CICD/pipelines/CD.yml` et `CICD/pipelines/PR-Validation.yml` :
-  - `__A_RELEVER__` : organisation et service connection GitHub ;
-  - `__A_CONFIRMER_SERVICE_CONNECTION_ARM_<ENV>__` : une service connection Azure Resource Manager distincte par environnement, créée par Ops en fédération d'identité, autorisée à lire les 3 secrets de son environnement dans le coffre unique `frfrkvdevdp0001`.
-- [x] Items sous `fabric/` et `repository_directory` à `"../../fabric"` dans `CICD/deployment/config.yml`.
-- [ ] Rediriger la Git Integration du workspace DEV vers le dossier `fabric`.
-- [ ] Lancer `deploy.py validate` sur la branche réelle et confirmer le dossier des notebooks `nb_log_*`.
-- [x] Noms des workspaces PPR et PRD confirmés le 22/10/2026 : `FR - DP - PPR - FAB - Framework - MANAGED`, `FR - DP - PRD - FAB - Framework - MANAGED`.
+  - `__A_RELEVER__` : organisation et service connection GitHub, nom du pipeline CI, nom de la CD Framework ;
+  - `__A_CONFIRMER_SERVICE_CONNECTION_ARM_ITG__` : service connection Azure Resource Manager ITG, créée par Ops en fédération d'identité, autorisée à lire les 3 secrets ITG dans `frfrkvdevdp0001`.
+- [ ] Créer le projet SonarQube et renseigner `CICD/pipelines/CI.yml`.
+- [ ] Créer les pipelines ADO CI, CD et PR-Validation ; déclarer PR-Validation comme « Required status check ».
+- [ ] Relever le nom exact du workspace ITG dans `CICD/deployment/config.yml`.
+- [ ] Synchroniser le workspace DEV dans `fabric/` (Git Integration, dossier `fabric`).
+- [ ] Remplir `item_types_in_scope`, `parameter.yml` (et `core.parameter`), `framework.items`, `connections`, `variable_libraries` et `guid_policy` à partir des items réels.
+- [ ] Lancer `deploy.py validate` sur la branche réelle jusqu'à zéro erreur.
 - [ ] Passer `inventory_status` à `validated` dans une PR revue.
-- [ ] Créer la CD sous le nom attendu par les autres dépôts, et accorder au service de build le droit « View builds » sur cette définition (lu par les portes des ADP et BDP).
-- [ ] Faire un **premier run de cette nouvelle CD sur chaque environnement** avant de basculer les ADP et BDP. Un Framework publié par l'ancienne CD est bien présent dans Fabric, mais la porte ne le voit pas (`GATE_NEVER_DEPLOYED`).
+- [ ] Vérifier que la nouvelle CD Framework a réussi au moins une fois sur ITG (sinon `GATE_NEVER_DEPLOYED`), et que le service de build a le droit « View builds » sur sa définition.
+
+## Marqueurs à relever
+
+| Marqueur | Fichier | Source |
+|---|---|---|
+| `__A_RELEVER__SERVICE_CONNECTION_GITHUB__`, `__A_RELEVER__ORG_GITHUB__` | `CD.yml`, `PR-Validation.yml` | ADO (service connections du projet) |
+| `__A_RELEVER__PIPELINE_CI_ALEXANDRIE__` | `CI.yml` (en-tête), `CD.yml` | ADO (nom donné à la définition CI) |
+| `__A_RELEVER__PIPELINE_CD_FRAMEWORK__` | `CD.yml`, `dependencies.yml` | ADO (attendu : `its-dp-fab-item-framework-managed-cd`, non confirmé) |
+| `__A_RELEVER__SONAR_*_ALEXANDRIE__` | `CI.yml` | Plateforme Technologique |
+| `__A_CONFIRMER_SERVICE_CONNECTION_ARM_<ENV>__` | `CD.yml` | Ops |
+| `__A_RELEVER__WORKSPACE_ALEXANDRIE_<ENV>__` (ITG, PPR, PRD) | `config.yml` | Portail Fabric |
+| `__A_RELEVER__ITEM_TYPES_ALEXANDRIE__` | `config.yml` (commentaire) | Fichiers `.platform` après Git Integration |
+| `__A_RELEVER__ITEMS_FRAMEWORK_CONSOMMES__`, `__A_RELEVER__CONNEXIONS_FABRIC_ALEXANDRIE__`, `__A_RELEVER__VARIABLE_LIBRARIES_ALEXANDRIE__`, `__A_RELEVER__GUID_POLICY_ALEXANDRIE__` | `dependencies.yml` (commentaires) | Inventaire des items |
+
+## Limites
+
+- Aucun item : la configuration est **non déployable**. La validation locale et la PR-Validation échouent en code 4 tant que `fabric/` ne contient aucun `.platform`.
+- Les contrôles statiques (`CONFIG_*`, `DEPS_*`, `TYPES_*`, `PARAM_*`) ne sont exécutés qu'une fois des items présents : la conformité de `config.yml` et de `dependencies.yml` au socle n'est pas encore prouvée par `deploy.py validate`.
+- Un YAML syntaxiquement valide ne garantit pas que le contrat Azure DevOps est respecté (ressources, service connections, Environments) : seule une compilation dans ADO le prouve.
+- Le filtre `contents: "!/*.json"` de l'artefact CI (point V-01) n'est pas vérifié.
+- `CICD/ref_dynamique/` n'est pas adapté à Alexandrie.
