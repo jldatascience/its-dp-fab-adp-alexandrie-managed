@@ -1,33 +1,37 @@
-# CICD/deployment/config.yml — its-dp-fab-adp-alexandrie-managed
+# CICD/deployment/config.yml — its-dp-fab-adp-alexandrie-managed (ADP Alexandrie)
 # Format fabric-cicd 1.4.0 (deploy_with_config), validé hors ligne par la CI
 # (fabric_cicd._common._config_utils.load_config_file) pour les 4 environnements.
-# Workspaces désignés par leur NOM exact (aucun GUID). Clés en MAJUSCULES : elles
-# doivent être identiques à --env passé par la CD (comparaison sensible à la casse).
-# Noms ITG/PPR/PRD : à copier depuis le portail Fabric (marqueurs __A_RELEVER__).
-# ÉTAT AU 30/10/2026 : CONFIGURATION NON DÉPLOYABLE. fabric/ ne contient aucun item
-# (aucun fichier .platform) : deploy.py validate s'arrête en code 4 avant les contrôles.
+# Workspaces désignés par leur NOM exact (aucun GUID : CONFIG_WORKSPACE_ID_FORBIDDEN). Clés en
+# MAJUSCULES : elles doivent être identiques à --env passé par la CD (sensible à la casse).
+# Noms DEV, ITG, PPR et PRD confirmés le 01/11/2026, avec le tiret simple « - » partout (le pré-vol
+# compare les noms caractère par caractère : un tiret long « – » ferait échouer la résolution).
+# DEV n'est jamais déployé par la CD (devMode: skip) : il est alimenté par Git Integration.
+# ÉTAT AU 01/11/2026 : CONFIGURATION NON DÉPLOYABLE. fabric/ ne contient aucun item
+# (aucun fichier .platform, seulement .gitkeep) : deploy.py validate s'arrête en code 4.
 # ── core — cible et perimetre du deploiement fabric-cicd (workspaces, types d'items)
 core:
   workspace:
     DEV: "FR - DP - DEV - FAB - ADP - Alexandrie - MANAGED"
-    ITG: "__A_RELEVER__WORKSPACE_ALEXANDRIE_ITG__"
-    PPR: "__A_RELEVER__WORKSPACE_ALEXANDRIE_PPR__"
-    PRD: "__A_RELEVER__WORKSPACE_ALEXANDRIE_PRD__"
+    ITG: "FR - DP - ITG - FAB - ADP - Alexandrie - MANAGED"
+    PPR: "FR - DP - PPR - FAB - ADP - Alexandrie - MANAGED"
+    PRD: "FR - DP - PRD - FAB - ADP - Alexandrie - MANAGED"
   # Relatif à ce fichier (fabric-cicd 1.4.0 et fabcicd le résolvent depuis le dossier de
   # config.yml) : CICD/deployment/ → ../../fabric = dossier fabric/ à la racine du dépôt.
   repository_directory: "../../fabric"
   # Un type absent de cette liste n'est pas publié, sans message : la CI vérifie la
   # cohérence avec les items réellement présents (TYPES_SILENTLY_EXCLUDED).
   # VIDE tant qu'aucun item n'est présent : à remplir UNIQUEMENT avec les types relevés dans
-  # les fichiers .platform de fabric/ (__A_RELEVER__ITEM_TYPES_ALEXANDRIE__). Liste vide
-  # = TYPES_SCOPE_EMPTY + CONFIG_FABRIC_CICD_INVALID (bloquant, voulu). Ne pas retirer la clé :
-  # absente, fabric-cicd publierait tous les types.
+  # les fichiers .platform de fabric/ (01_inventaire_github.py, __A_RELEVER__ITEM_TYPES_ADP__).
+  # Liste vide = TYPES_SCOPE_EMPTY + CONFIG_FABRIC_CICD_INVALID (bloquant, voulu). Ne pas
+  # retirer la clé : absente, fabric-cicd publierait tous les types.
   item_types_in_scope: []
   # Clé « parameter » volontairement ABSENTE : parameter.yml ne contient encore aucune règle.
   # L'ajouter (parameter: "parameter.yml") avec la première règle key_value_replace.
 # ── publish — publication automatique des items, par environnement (false = on publie)
 publish:
   # Pas de folder_exclude_regex : aucun dossier à exclure n'existe dans fabric/.
+  # DEV reste à false : DEV n'est pas exclu ici mais par la CD (devMode: skip, aucun stage DEV).
+  # ITG, PPR, PRD doivent rester à false (CONFIG_PUBLISH_SKIPPED).
   skip:
     DEV: false
     ITG: false

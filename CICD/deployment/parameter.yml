@@ -1,8 +1,9 @@
-# CICD/deployment/parameter.yml — its-dp-fab-adp-alexandrie-managed
-# AUCUNE RÈGLE au 30/10/2026 : fabric/ ne contient aucun item. Ce fichier n'est pas encore
+# CICD/deployment/parameter.yml — its-dp-fab-adp-alexandrie-managed (ADP Alexandrie)
+# AUCUNE RÈGLE au 01/11/2026 : fabric/ ne contient aucun item. Ce fichier n'est pas encore
 # référencé par config.yml (clé core.parameter absente) ; l'y ajouter avec la première règle.
+# Les 56 règles du Framework ne s'appliquent pas à ce dépôt et ne sont pas reprises.
 #
-# Deux familles de règles attendues, au format fabric-cicd 1.4.0 (key_value_replace) :
+# Deux familles de règles admises pour un ADP, au format fabric-cicd 1.4.0 (key_value_replace) :
 #   1. Workspace courant (ADP Alexandrie) — item du même dépôt :
 #        replace_value: {_ALL_: "$workspace.$id"}
 #        replace_value: {_ALL_: "$items.<Type>.<nom>.$id"}
@@ -12,6 +13,7 @@
 #          ITG: "$workspace.FR - DP - ITG - FAB - Framework - MANAGED.$items.<Type>.<nom>.$id"
 #          PPR: "$workspace.FR - DP - PPR - FAB - Framework - MANAGED.$items.<Type>.<nom>.$id"
 #          PRD: "$workspace.FR - DP - PRD - FAB - Framework - MANAGED.$items.<Type>.<nom>.$id"
+#      (et "$workspace.FR - DP - <ENV> - FAB - Framework - MANAGED.$id" pour workspaceId).
 #      Chaque item Framework ainsi visé doit être déclaré dans framework.items de
 #      dependencies.yml (sinon DEPS_FRAMEWORK_ITEM_UNDECLARED).
 #   Aucune autre référence inter-workspace n'est admise (ADP, BDP, UCS) :
@@ -20,8 +22,8 @@
 # Interdits : GUID de workspace sandbox ou d'environnement en dur (GUID_HARDCODED) et GUID
 # littéral dans replace_value (RULE_LITERAL_GUID) ; clés d'environnement en minuscules.
 #
-# Procédure : après synchronisation Git Integration du workspace DEV (dossier fabric),
-# reconstruire les règles à partir des items réellement présents (activités InvokePipeline,
-# TridentNotebook, références de Lakehouse…), puis lancer :
+# Procédure : après synchronisation Git Integration du workspace DEV (dossier fabric), lancer
+# depuis CICD/ref_dynamique/ les scripts 01 à 04 (proposition de règles et de framework.items,
+# hors dépôt), recopier ici les règles retenues, puis :
 #   python ../its-dp-fab-cicd-common/CICD/tools/deploy.py validate --repo .
 # jusqu'à zéro erreur (règle sans effet, GUID non couvert et item absent sont bloquants).
